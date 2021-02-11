@@ -1,0 +1,31 @@
+{
+  "name": "loopback-connector-odata",
+  "version": "1.0.0",
+  "description": "Loopback odata connector for 1C:ENterprise server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilijaz/loopback-connector-odata.git"
+  },
+  "keywords": [
+    "loopback",
+    "connector",
+    "odata",
+    "1c"
+  ],
+  "author": "Ilya Zubakin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ilijaz/loopback-connector-odata/issues"
+  },
+  "homepage": "https://github.com/ilijaz/loopback-connector-odata#readme",
+  "dependencies": {
+    "debug": "^4.3.1",
+    "loopback-connector": "^5.0.1",
+    "moment": "^2.29.1",
+    "odata-client": "^0.6.14"
+  }
+}
