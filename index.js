@@ -548,9 +548,10 @@ OdataDB.prototype.applyOrderBy = function(model, query, order) {
  * @param {String} model Model name
  * @param {Object} filter Filter object
  * @param {Object} options Options object
+ * @param {Boolean} count Just count objects
  * @returns {ParameterizedSQL} Statement object {sql: ..., params: ...}
  */
-OdataDB.prototype.buildSelect = function(model, filter, options) {
+OdataDB.prototype.buildSelect = function(model, filter, options, count) {
   if (!filter.order) {
     const idNames = this.idNames(model);
     if (idNames && idNames.length) {
@@ -558,7 +559,9 @@ OdataDB.prototype.buildSelect = function(model, filter, options) {
     }
   }
   // const selectArray = this.buildColumnNames(model, filter);
-  const resource = encodeURI(this.tableEscaped(model));
+  let resource = encodeURI(this.tableEscaped(model));
+  
+  if(count) resource = `${resource}/$count`;
 
   let query = this.odata({service: this.settings.url,
     format: 'json',
@@ -1124,3 +1127,31 @@ OdataDB.prototype.buildUpdateById = function(model, where, data, options) {
 //Connector.defineAliases(OdataDB.prototype, 'update', ['updateAll']);
 
 
+/**
+ * Count all model instances by the where filter
+ *
+ * @param {String} model The model name
+ * @param {Object} where The where object
+ * @param {Object} options The options object
+ * @param {Function} cb The callback function
+ */
+OdataDB.prototype.count = function(model, where, options, cb) {
+  if (typeof where === 'function') {
+    // Backward compatibility for 1.x style signature:
+    // count(model, cb, where)
+    const tmp = options;
+    cb = where;
+    where = tmp;
+  }
+  const self = this;
+  const headers = this.headers;  
+  const query = this.buildSelect(model, {where}, options, true);
+  query.get({headers})
+  .then(res => {
+    const data = this.parse(res);    
+    cb(null, data);
+  })
+  .catch(err =>{
+    return cb(err, -1);
+  });
+};
