@@ -243,6 +243,11 @@ OdataDB.prototype._buildWhere = function(model, where, parentColumn) {
       debug('Unknown property %s is skipped for model %s', key, model);
       continue;
     }
+    if(p.odata.url) {
+      // skip url parameter
+      debug('Skipping url property %s for model %s', key, model);
+      continue;
+    }
     // eslint-disable one-var
     let expression = where[key];
     const columnName = (parentColumn) ? `${parentColumn}/${self.columnEscaped(model, key)}` : self.columnEscaped(model, key);
@@ -500,9 +505,11 @@ OdataDB.prototype.applyColumnNames = function(model, filter, query) {
   }
   // Applying expand
   const expand = keys
-    .filter(k => cols[k][NAME] && cols[k][NAME].field && cols[k][NAME].dataType === 'object'); ;
+    .filter(k => cols[k][NAME] && cols[k][NAME].field && cols[k][NAME].dataType === 'object'); 
 
-  const names = keys.map(function(c) {
+  const names = keys
+    .filter(k => !cols[k][NAME].url) // not an url parameter
+    .map(function(c) {
     return self.columnEscaped(model, c);
   });
   if (expand.length) {
@@ -543,6 +550,8 @@ OdataDB.prototype.applyOrderBy = function(model, query, order) {
   }
   return query.orderby(...clauses);
 };
+
+
 /**
  * Build a SQL SELECT statement
  * @param {String} model Model name
@@ -558,9 +567,20 @@ OdataDB.prototype.buildSelect = function(model, filter, options, count) {
       filter.order = idNames;
     }
   }
+  let url = this.tableEscaped(model);
+  const urlRegexp = new RegExp(/\$\{([a-zA-Z0-9_.-]*)\}/i); //Only one param in url
+  let resource;
+  const urlParams = url.match(urlRegexp);
+  if(urlParams) {
+    if(filter && filter.where &&  filter.where[urlParams[1]]){     
+      url = url.replace(urlRegexp, (m,p1) => this.propToColumnValue(model, p1, filter.where[p1]));
+    } else {
+      throw new Error(`${urlParams[1]} is required in where clause`);
+    }
+  } 
+  resource = encodeURI(url);
   // const selectArray = this.buildColumnNames(model, filter);
-  let resource = encodeURI(this.tableEscaped(model));
-  
+   
   if(count) resource = `${resource}/$count`;
 
   let query = this.odata({service: this.settings.url,
@@ -678,7 +698,7 @@ OdataDB.prototype.parse = function(res) {
  * @returns {object} Model data object
  */
 OdataDB.prototype.fromRow = OdataDB.prototype.fromDatabase =
-function(model, rowData) {
+function(model, rowData, where) {
   if (rowData == null) {
     return rowData;
   }
@@ -688,7 +708,9 @@ function(model, rowData) {
     const columnName = this.column(model, p);
     // Load properties from the row
     const columnValue = this.fromColumnValue(props[p], rowData[columnName]);
-    if (columnValue !== undefined) {
+    if(props[p][NAME] && props[p][NAME].url) {
+      data[p] = where[p];
+    } else if (columnValue !== undefined) {
       data[p] = columnValue;
     }
   }
@@ -758,7 +780,7 @@ OdataDB.prototype.all = function find(model, filter, options, cb) {
   .then(res => {
     const data = this.parse(res);
     const objs = data.map(function(obj) {
-      return self.fromRow(model, obj);
+      return self.fromRow(model, obj, filter.where);
     });
     if (filter && filter.include) {
       self.getModelDefinition(model).model.include(
@@ -956,6 +978,19 @@ OdataDB.prototype.buildFields = function(model, data, excludeIds) {
   const keys = Object.keys(data);
   return this._buildFieldsForKeys(model, data, keys, excludeIds);
 };
+
+/*
+ * @param {String} model The model name.
+ * @returns {Object} data The model data object.
+ * @returns {Array} keys The key fields for which need to be built.
+ * @param {Boolean} excludeIds Exclude id properties or not, default to false
+ * @private
+ */
+
+OdataDB.prototype.propToColumnValue = function(model, p, value) {
+  const props = this.getModelDefinition(model).properties;
+  return this.toColumnValue(props[p], value, false);
+}
 
 /*
  * @param {String} model The model name.
