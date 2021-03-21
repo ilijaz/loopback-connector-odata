@@ -132,6 +132,7 @@ OdataDB.prototype.toColumnValue = function(propertyDef, value, noEscape) {
   switch (propertyDef.type.name) {
     case 'Date':  return noEscape ? value : `datetime'${moment(value).format(dateFormat)}'`;
     case 'Boolean': return value;
+    case 'Number': return value;
     default: return noEscape ? value :`'${value}'`;
   }
   // throw new Error(g.f('{{toColumnValue()}} must be implemented by the connector'));
@@ -319,7 +320,7 @@ OdataDB.prototype._buildWhere = function(model, where, parentColumn) {
           if(p.odata.cast) {
             const typeProp = props[p.odata.cast];
             const type = this.toColumnValue(typeProp, where[p.odata.cast],true).split('.')[1]
-            columnValue = `cast(${columnValue}, '${type})` //sorry, I have no time
+            columnValue = `cast(${columnValue}, '${type}')` //sorry, I have no  !!!! FIX ME DUMB 
           } 
           stmt.merge({
             sql: `${columnName} eq ?`,
