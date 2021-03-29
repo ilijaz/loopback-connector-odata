@@ -1,6 +1,6 @@
 {
   "name": "loopback-connector-odata",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "Loopback odata connector for 1C:ENterprise server",
   "main": "index.js",
   "scripts": {
